@@ -6,9 +6,7 @@
     <title>Dashboard Dinámico de Trazabilidad Clínica PDC 2026</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- SheetJS (xlsx.full.min.js) para lectura nativa de Excel (.xlsx / .csv) -->
+    <!-- SheetJS (xlsx.full.min.js) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -17,7 +15,8 @@
         .glass-card { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; }
         .badge-estable { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
         .badge-riesgo { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-        .badge-alerta { background-color: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+        .badge-incidente { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .badge-prevalente { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     </style>
 </head>
 <body class="text-slate-800 antialiased p-4 md:p-6">
@@ -67,7 +66,7 @@
         </div>
     </div>
 
-    <!-- PANEL DE FILTROS CORTAFUEGOS Y BÚSQUEDA INTEGRA -->
+    <!-- PANEL DE FILTROS CORTAFUEGOS Y CATEGORIZACIÓN EPIDEMIOLÓGICA -->
     <section class="max-w-7xl mx-auto mb-6 glass-card rounded-2xl p-5 shadow-sm">
         <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
             <i class="fa-solid fa-filter text-indigo-600"></i> Búsqueda y Trazabilidad Clínica
@@ -92,20 +91,19 @@
                 </select>
             </div>
             <div>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Categoría Epidemiológica</label>
+                <select id="filterCategoria" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
+                    <option value="">Todas las Categorías</option>
+                    <option value="Incidente">Incidentes (Nuevos)</option>
+                    <option value="Prevalente">Prevalentes (Continuidad)</option>
+                </select>
+            </div>
+            <div>
                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Estado Global</label>
                 <select id="filterEstado" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
                     <option value="">Todos los Estados</option>
                     <option value="Estable">Estable</option>
                     <option value="No Estable / En Riesgo">No Estable / En Riesgo</option>
-                </select>
-            </div>
-            <div>
-                <label class="block text-[11px] font-bold text-slate-600 mb-1">Autoeficacia Operativa</label>
-                <select id="filterAutoeficacia" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
-                    <option value="">Todas</option>
-                    <option value="Autosuficiente">Autosuficiente</option>
-                    <option value="Terapia Asistida Parcial">Terapia Asistida Parcial</option>
-                    <option value="Terapia Asistida Total">Terapia Asistida Total</option>
                 </select>
             </div>
             <div>
@@ -132,18 +130,18 @@
                 <span id="kpiTotalEvaluations" class="text-xs text-indigo-700 bg-indigo-50 px-2 py-1 rounded-md font-bold">0 Evaluaciones</span>
             </div>
         </div>
+        <div class="glass-card rounded-2xl p-4 shadow-sm border-l-4 border-sky-500">
+            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Desglose Epidemiológico</p>
+            <div class="flex justify-between items-baseline mt-2">
+                <span id="kpiIncidentesCount" class="text-2xl font-extrabold text-sky-700">0 Incid.</span>
+                <span id="kpiPrevalentesCount" class="text-xs text-slate-600 font-bold bg-slate-100 px-2 py-1 rounded">0 Preval.</span>
+            </div>
+        </div>
         <div class="glass-card rounded-2xl p-4 shadow-sm border-l-4 border-emerald-500">
             <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tasa de Estabilidad</p>
             <div class="flex justify-between items-baseline mt-2">
                 <span id="kpiEstablesPct" class="text-3xl font-extrabold text-emerald-600">0%</span>
                 <span id="kpiRiesgoCount" class="text-xs text-rose-600 font-semibold">0 En riesgo</span>
-            </div>
-        </div>
-        <div class="glass-card rounded-2xl p-4 shadow-sm border-l-4 border-amber-500">
-            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Dependencia / Terapia Asistida</p>
-            <div class="flex justify-between items-baseline mt-2">
-                <span id="kpiAsistidaTotal" class="text-3xl font-extrabold text-amber-600">0</span>
-                <span class="text-xs text-slate-500 font-medium">Terapia Asistida Total</span>
             </div>
         </div>
         <div class="glass-card rounded-2xl p-4 shadow-sm border-l-4 border-rose-600">
@@ -172,7 +170,7 @@
                 <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-table-list text-indigo-900"></i> Vista de Trazabilidad Clínica Detallada
                 </h3>
-                <p class="text-xs text-slate-500">Muestra la secuencia cronológica de consultas para todos los pacientes (o sin registro).</p>
+                <p class="text-xs text-slate-500">Muestra la secuencia cronológica de consultas para todos los pacientes con categorización de incidentes/prevalentes.</p>
             </div>
             <div id="recordsCountBadge" class="text-xs font-bold text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
                 0 registros mostrados
@@ -186,6 +184,7 @@
                         <th class="p-3">Acción</th>
                         <th class="p-3">Expediente</th>
                         <th class="p-3">Nombre del Paciente</th>
+                        <th class="p-3">Categoría</th>
                         <th class="p-3">Año/Mes</th>
                         <th class="p-3">Estado Global</th>
                         <th class="p-3">Depresión (Beck)</th>
@@ -201,7 +200,7 @@
                 </thead>
                 <tbody id="tableBodyExpedientes" class="divide-y divide-slate-200 bg-white">
                     <tr>
-                        <td colspan="14" class="p-8 text-center text-slate-400 italic">Cargando base de datos...</td>
+                        <td colspan="15" class="p-8 text-center text-slate-400 italic">Cargando base de datos...</td>
                     </tr>
                 </tbody>
             </table>
@@ -227,6 +226,13 @@
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Nombre Completo del Paciente *</label>
                     <input type="text" id="inputNombre" required class="w-full p-2.5 border rounded-lg bg-slate-50">
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Categoría Epidemiológica *</label>
+                    <select id="inputCategoria" required class="w-full p-2.5 border rounded-lg bg-slate-50">
+                        <option value="Incidente">Incidente (Nuevo Ingreso)</option>
+                        <option value="Prevalente">Prevalente (En Seguimiento)</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Año / Mes de Consulta *</label>
@@ -303,34 +309,26 @@
 
     <!-- SCRIPT DE CONTROL Y LÓGICA INTEGRA -->
     <script>
-        // BASE DE DATOS BASE DE EJEMPLO
         const BASE_INITIAL_DATA = [
-            {expediente:"30032", nombre:"María Altagracia Pérez", month:"Abril", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"No registrado", autoeficacia:"Terapia Asistida Parcial", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
-            {expediente:"30032", nombre:"María Altagracia Pérez", month:"Junio", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"91.7% (Eficiente)", autoeficacia:"Autosuficiente", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
-            {expediente:"30032", nombre:"María Altagracia Pérez", month:"Julio", estado:"Estable", beck:"No registrado", moca:"13/22 (Det. Mod.)", eat:"No registrado", autoeficacia:"Terapia Asistida Total", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
-            {expediente:"30032", nombre:"María Altagracia Pérez", month:"Agosto", estado:"No Estable / En Riesgo", beck:"9 pts (Mínima)", moca:"13/22 (DCL)", eat:"91.7% (Eficiente)", autoeficacia:"Terapia Asistida Total", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Límite agudeza visual", referimiento:"Ninguno"},
-            {expediente:"30032", nombre:"María Altagracia Pérez", month:"Septiembre", estado:"Estable", beck:"No registrado", moca:"13/22 (Det. Mod.)", eat:"No registrado", autoeficacia:"Autosuficiente", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Compromiso visual", referimiento:"Ninguno"},
-            {expediente:"30032", nombre:"María Altagracia Pérez", month:"Octubre", estado:"No Estable / En Riesgo", beck:"No registrado", moca:"13/22 (DCL)", eat:"91.7% (Eficiente)", autoeficacia:"Terapia Asistida Total", red:"Deficiente", conflicto:"Sin conflicto", transgresion:"Bioseguridad", psicosocial:"Déficit visual severo", referimiento:"Neurología"},
+            // Femenina Incidente (Nuevo ingreso de prueba)
+            {expediente:"31005", nombre:"Juana de la Rosa", categoria:"Incidente", month:"Octubre", estado:"Estable", beck:"5 pts (Mínima)", moca:"En norma", eat:"95% (Eficiente)", autoeficacia:"Autosuficiente", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Evaluación inicial de ingreso PDC", referimiento:"Ninguno"},
 
-            {expediente:"29947", nombre:"José Antonio Rodríguez", month:"Abril", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"No registrado", autoeficacia:"Autosuficiente", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Sin $ fármacos", referimiento:"Ninguno"},
-            {expediente:"29947", nombre:"José Antonio Rodríguez", month:"Mayo", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"No registrado", autoeficacia:"Terapia Asistida Parcial", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
-            {expediente:"29947", nombre:"José Antonio Rodríguez", month:"Junio", estado:"No Estable / En Riesgo", beck:"No registrado", moca:"En norma", eat:"83.3% (Deficiente)", autoeficacia:"Autosuficiente", red:"Deficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
-            {expediente:"29947", nombre:"José Antonio Rodríguez", month:"Julio", estado:"Estable", beck:"No registrado", moca:"17/22 (DCL)", eat:"No registrado", autoeficacia:"Terapia Asistida Total", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
-            {expediente:"29947", nombre:"José Antonio Rodríguez", month:"Agosto", estado:"No Estable / En Riesgo", beck:"13 pts (Mínima)", moca:"17/22 (DCL)", eat:"83.3% (Deficiente)", autoeficacia:"Terapia Asistida Total", red:"Deficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Cuidadora sobrecargada", referimiento:"Ninguno"},
-            {expediente:"29947", nombre:"José Antonio Rodríguez", month:"Octubre", estado:"No Estable / En Riesgo", beck:"No registrado", moca:"17/22 (DCL)", eat:"No registrado", autoeficacia:"Autosuficiente", red:"Deficiente", conflicto:"Sin conflicto", transgresion:"Registro/Asepsia", psicosocial:"Falla de supervisión", referimiento:"Enfermería PDC"}
+            // Prevalentes
+            {expediente:"30032", nombre:"María Altagracia Pérez", categoria:"Prevalente", month:"Abril", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"No registrado", autoeficacia:"Terapia Asistida Parcial", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
+            {expediente:"30032", nombre:"María Altagracia Pérez", categoria:"Prevalente", month:"Junio", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"91.7% (Eficiente)", autoeficacia:"Autosuficiente", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
+            {expediente:"30032", nombre:"María Altagracia Pérez", categoria:"Prevalente", month:"Octubre", estado:"No Estable / En Riesgo", beck:"No registrado", moca:"13/22 (DCL)", eat:"91.7% (Eficiente)", autoeficacia:"Terapia Asistida Total", red:"Deficiente", conflicto:"Sin conflicto", transgresion:"Bioseguridad", psicosocial:"Déficit visual severo", referimiento:"Neurología"},
+
+            {expediente:"29947", nombre:"José Antonio Rodríguez", categoria:"Prevalente", month:"Abril", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"No registrado", autoeficacia:"Autosuficiente", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Sin $ fármacos", referimiento:"Ninguno"},
+            {expediente:"29947", nombre:"José Antonio Rodríguez", categoria:"Prevalente", month:"Octubre", estado:"No Estable / En Riesgo", beck:"No registrado", moca:"17/22 (DCL)", eat:"No registrado", autoeficacia:"Autosuficiente", red:"Deficiente", conflicto:"Sin conflicto", transgresion:"Registro/Asepsia", psicosocial:"Falla de supervisión", referimiento:"Enfermería PDC"}
         ];
 
         let currentDataset = [];
 
-        // CARGA E INICIALIZACIÓN
         function initData() {
             const saved = localStorage.getItem('pdc_trazabilidad_dataset');
             if (saved) {
-                try {
-                    currentDataset = JSON.parse(saved);
-                } catch(e) {
-                    currentDataset = [...BASE_INITIAL_DATA];
-                }
+                try { currentDataset = JSON.parse(saved); } 
+                catch(e) { currentDataset = [...BASE_INITIAL_DATA]; }
             } else {
                 currentDataset = [...BASE_INITIAL_DATA];
             }
@@ -341,39 +339,31 @@
             localStorage.setItem('pdc_trazabilidad_dataset', JSON.stringify(currentDataset));
         }
 
-        // RENDERIZAR TODO EL DASHBOARD Y TRAZABILIDAD
         function renderDashboard() {
             const searchVal = document.getElementById('filterSearch').value.trim().toLowerCase();
             const monthVal = document.getElementById('filterMonth').value;
+            const catVal = document.getElementById('filterCategoria').value;
             const estadoVal = document.getElementById('filterEstado').value;
-            const autoVal = document.getElementById('filterAutoeficacia').value;
             const refVal = document.getElementById('filterReferimiento').value;
 
-            // Filtrado del dataset
             const filtered = currentDataset.filter(item => {
                 const matchesSearch = searchVal === "" || 
                     String(item.expediente).toLowerCase().includes(searchVal) || 
                     String(item.nombre || '').toLowerCase().includes(searchVal);
                 
                 const matchesMonth = monthVal === "" || item.month === monthVal;
+                const matchesCat = catVal === "" || (item.categoria || 'Prevalente') === catVal;
                 const matchesEstado = estadoVal === "" || item.estado === estadoVal;
-                const matchesAuto = autoVal === "" || item.autoeficacia === autoVal;
                 const matchesRef = refVal === "" || String(item.referimiento || '').toLowerCase().includes(refVal.toLowerCase());
 
-                return matchesSearch && matchesMonth && matchesEstado && matchesAuto && matchesRef;
+                return matchesSearch && matchesMonth && matchesCat && matchesEstado && matchesRef;
             });
 
-            // Renderizar Timeline Individual si se busca un expediente o nombre específico
             renderPatientTimeline(filtered, searchVal);
-
-            // Renderizar Tabla General
             renderTable(filtered);
-
-            // Recalcular KPIs
             updateKPIs(filtered);
         }
 
-        // VISTA DE LÍNEA DE TIEMPO (TIMELINE HISTÓRICO INDIVIDUAL)
         function renderPatientTimeline(filteredData, searchVal) {
             const container = document.getElementById('patientTimelineContainer');
             const headerInfo = document.getElementById('patientHeaderInfo');
@@ -385,12 +375,14 @@
                 const first = filteredData[0];
                 const exp = first.expediente;
                 const name = first.nombre || "Paciente PDC";
+                const cat = first.categoria || "Prevalente";
 
                 headerInfo.innerHTML = `
                     <div>
                         <div class="flex items-center gap-2">
                             <span class="text-xs font-mono font-bold bg-indigo-100 text-indigo-900 px-2.5 py-1 rounded-md">Exp. ${exp}</span>
                             <h2 class="text-lg font-extrabold text-slate-900">${name}</h2>
+                            <span class="${cat === 'Incidente' ? 'badge-incidente' : 'badge-prevalente'} text-[11px] font-bold px-2.5 py-0.5 rounded-full">${cat}</span>
                         </div>
                         <p class="text-xs text-slate-500 mt-0.5">Trazabilidad histórica de evaluaciones clínicas registradas.</p>
                     </div>
@@ -403,7 +395,6 @@
 
                 cardsContainer.innerHTML = "";
                 
-                // Ordenar cronológicamente por meses
                 filteredData.forEach(r => {
                     const idxInMain = currentDataset.indexOf(r);
                     const isEstable = r.estado.includes("Estable") && !r.estado.includes("No");
@@ -447,13 +438,12 @@
             }
         }
 
-        // RENDERIZAR TABLA DE EVALUACIONES
         function renderTable(data) {
             const tbody = document.getElementById('tableBodyExpedientes');
             tbody.innerHTML = "";
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="14" class="p-8 text-center text-rose-500 font-semibold">No se encontraron registros de consultas con los criterios seleccionados.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-rose-500 font-semibold">No se encontraron registros con los criterios seleccionados.</td></tr>`;
                 return;
             }
 
@@ -464,6 +454,8 @@
 
                 const isEstable = r.estado.includes("Estable") && !r.estado.includes("No");
                 const badgeClass = isEstable ? "badge-estable" : "badge-riesgo";
+                const cat = r.categoria || "Prevalente";
+                const catBadge = cat === 'Incidente' ? 'badge-incidente' : 'badge-prevalente';
 
                 tr.innerHTML = `
                     <td class="p-3">
@@ -473,6 +465,7 @@
                     </td>
                     <td class="p-3 font-mono font-bold text-indigo-900">${r.expediente}</td>
                     <td class="p-3 font-semibold text-slate-900">${r.nombre || 'Paciente PDC'}</td>
+                    <td class="p-3"><span class="${catBadge} text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">${cat}</span></td>
                     <td class="p-3 font-semibold text-slate-700">${r.month} 2026</td>
                     <td class="p-3"><span class="${badgeClass} text-[10px] font-bold px-2 py-0.5 rounded-full inline-block">${r.estado}</span></td>
                     <td class="p-3 text-slate-700">${r.beck || 'No registrado'}</td>
@@ -489,25 +482,29 @@
             });
         }
 
-        // ACTUALIZAR KPIS CALCULADOS
         function updateKPIs(data) {
             const uniquePatients = new Set(data.map(f => f.expediente)).size;
             const totalEvaluations = data.length;
+            
+            // Conteo Epidemiológico
+            const incidentesCount = new Set(data.filter(f => (f.categoria || 'Prevalente') === 'Incidente').map(f => f.expediente)).size;
+            const prevalentesCount = uniquePatients - incidentesCount;
+
             const establesCount = data.filter(f => f.estado.includes("Estable") && !f.estado.includes("No")).length;
             const establesPct = totalEvaluations > 0 ? Math.round((establesCount / totalEvaluations) * 100) : 0;
-            const asistidaTotalCount = data.filter(f => f.autoeficacia === "Terapia Asistida Total").length;
             const alertasCount = data.filter(f => f.estado.includes("Riesgo") || (f.referimiento && f.referimiento !== "Ninguno")).length;
 
             document.getElementById('kpiUniquePatients').innerText = uniquePatients;
             document.getElementById('kpiTotalEvaluations').innerText = totalEvaluations + " Evaluaciones";
+            document.getElementById('kpiIncidentesCount').innerText = incidentesCount + " Incid.";
+            document.getElementById('kpiPrevalentesCount').innerText = prevalentesCount + " Preval.";
             document.getElementById('kpiEstablesPct').innerText = establesPct + "%";
             document.getElementById('kpiRiesgoCount').innerText = (totalEvaluations - establesCount) + " En riesgo";
-            document.getElementById('kpiAsistidaTotal').innerText = asistidaTotalCount;
             document.getElementById('kpiAlertasCriticas').innerText = alertasCount;
             document.getElementById('recordsCountBadge').innerText = `${totalEvaluations} registros mostrados`;
         }
 
-        // LECTURA DE EXCEL Y CSV (SheetJS)
+        // Carga de Excel / CSV
         document.getElementById('excelFileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -517,16 +514,11 @@
                 try {
                     const data = new Uint8Array(evt.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[firstSheetName];
+                    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonRows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
 
-                    if (jsonRows.length === 0) {
-                        alert("El archivo no contiene filas o datos válidos.");
-                        return;
-                    }
+                    if (jsonRows.length === 0) return alert("El archivo no contiene datos.");
 
-                    // Mapeo flexible de columnas
                     const newRecords = jsonRows.map(row => {
                         const findKey = (keys) => {
                             const k = Object.keys(row).find(rk => keys.some(key => rk.toLowerCase().includes(key)));
@@ -535,7 +527,8 @@
 
                         return {
                             expediente: String(findKey(['expediente', 'exp', 'id']) || 'S/N').trim(),
-                            nombre: String(findKey(['nombre', 'paciente', 'nombre completo']) || 'Paciente PDC').trim(),
+                            nombre: String(findKey(['nombre', 'paciente']) || 'Paciente PDC').trim(),
+                            categoria: String(findKey(['categoria', 'tipo', 'ingreso']) || 'Prevalente').trim(),
                             month: String(findKey(['mes', 'month', 'fecha']) || 'Octubre').trim(),
                             estado: String(findKey(['estado']) || 'Estable').trim(),
                             beck: String(findKey(['beck', 'depresion']) || 'No registrado').trim(),
@@ -546,23 +539,21 @@
                             conflicto: String(findKey(['conflicto']) || 'Sin conflicto').trim(),
                             transgresion: String(findKey(['transgresion']) || 'Ninguna').trim(),
                             psicosocial: String(findKey(['psicosocial', 'vulnerabilidad']) || 'Bajo riesgo social').trim(),
-                            referimiento: String(findKey(['referimiento', 'canalizacion']) || 'Ninguno').trim()
+                            referimiento: String(findKey(['referimiento']) || 'Ninguno').trim()
                         };
                     });
 
-                    // Acumular y guardar
                     currentDataset = [...currentDataset, ...newRecords];
                     saveData();
                     renderDashboard();
-                    alert(`¡Éxito! Se han importado ${newRecords.length} evaluaciones a la matriz de trazabilidad.`);
+                    alert(`¡Importación exitosa! Se han añadido ${newRecords.length} registros a la matriz.`);
                 } catch (err) {
-                    alert("Ocurrió un inconveniente al leer el archivo. Asegúrate de que sea un archivo Excel (.xlsx) o CSV válido.");
+                    alert("Asegúrate de seleccionar un archivo Excel (.xlsx) o CSV válido.");
                 }
             };
             reader.readAsArrayBuffer(file);
         });
 
-        // EDICIÓN DE REGISTRO INDIVIDUAL
         function editRecord(index) {
             const r = currentDataset[index];
             if (!r) return;
@@ -571,6 +562,7 @@
             document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-user-pen text-indigo-600"></i> Editar Consulta - Exp. ${r.expediente}`;
             document.getElementById('inputExpediente').value = r.expediente;
             document.getElementById('inputNombre').value = r.nombre || '';
+            document.getElementById('inputCategoria').value = r.categoria || 'Prevalente';
             document.getElementById('inputMonth').value = r.month || 'Octubre';
             document.getElementById('inputEstado').value = r.estado.includes('Riesgo') ? 'No Estable / En Riesgo' : 'Estable';
             document.getElementById('inputBeck').value = r.beck || '';
@@ -586,7 +578,6 @@
             document.getElementById('patientModal').classList.remove('hidden');
         }
 
-        // EVENTOS DEL MODAL
         document.getElementById('openNewPatientModalBtn').addEventListener('click', () => {
             document.getElementById('editIndex').value = "-1";
             document.getElementById('modalTitle').innerHTML = `<i class="fa-solid fa-user-plus text-emerald-600"></i> Registrar Nueva Consulta / Expediente`;
@@ -608,6 +599,7 @@
             const recordData = {
                 expediente: document.getElementById('inputExpediente').value.trim(),
                 nombre: document.getElementById('inputNombre').value.trim(),
+                categoria: document.getElementById('inputCategoria').value,
                 month: document.getElementById('inputMonth').value,
                 estado: document.getElementById('inputEstado').value,
                 beck: document.getElementById('inputBeck').value.trim() || 'No registrado',
@@ -621,49 +613,42 @@
                 psicosocial: document.getElementById('inputPsicosocial').value.trim() || 'Bajo riesgo'
             };
 
-            if (idx >= 0) {
-                currentDataset[idx] = recordData;
-            } else {
-                currentDataset.push(recordData);
-            }
+            if (idx >= 0) { currentDataset[idx] = recordData; } 
+            else { currentDataset.push(recordData); }
 
             saveData();
             renderDashboard();
             document.getElementById('patientModal').classList.add('hidden');
         });
 
-        // FILTROS EN TIEMPO REAL
-        ['filterSearch', 'filterMonth', 'filterEstado', 'filterAutoeficacia', 'filterReferimiento'].forEach(id => {
+        ['filterSearch', 'filterMonth', 'filterCategoria', 'filterEstado', 'filterReferimiento'].forEach(id => {
             document.getElementById(id).addEventListener('input', renderDashboard);
             document.getElementById(id).addEventListener('change', renderDashboard);
         });
 
-        // RESETEAR FILTROS
         document.getElementById('resetFiltersBtn').addEventListener('click', () => {
             document.getElementById('filterSearch').value = "";
             document.getElementById('filterMonth').value = "";
+            document.getElementById('filterCategoria').value = "";
             document.getElementById('filterEstado').value = "";
-            document.getElementById('filterAutoeficacia').value = "";
             document.getElementById('filterReferimiento').value = "";
             renderDashboard();
         });
 
-        // LIMPIAR MEMORIA LOCAL
         document.getElementById('clearMemoryBtn').addEventListener('click', () => {
-            if (confirm("¿Deseas restaurar la base de datos a su estado inicial y limpiar las cargas realizadas?")) {
+            if (confirm("¿Deseas restaurar la base de datos a su estado inicial?")) {
                 localStorage.removeItem('pdc_trazabilidad_dataset');
                 currentDataset = [...BASE_INITIAL_DATA];
                 renderDashboard();
             }
         });
 
-        // EXPORTAR CSV
         document.getElementById('exportCsvBtn').addEventListener('click', () => {
             if (currentDataset.length === 0) return alert("No hay datos para exportar.");
             
-            let csv = "Expediente,Nombre,Mes,Estado,Beck,MoCA,EAT,Autoeficacia,Red,Conflicto,Transgresion,Psicosocial,Referimiento\n";
+            let csv = "Expediente,Nombre,Categoria,Mes,Estado,Beck,MoCA,EAT,Autoeficacia,Red,Conflicto,Transgresion,Psicosocial,Referimiento\n";
             currentDataset.forEach(r => {
-                csv += `"${r.expediente}","${r.nombre || ''}","${r.month}","${r.estado}","${r.beck}","${r.moca}","${r.eat}","${r.autoeficacia}","${r.red}","${r.conflicto}","${r.transgresion}","${r.psicosocial}","${r.referimiento}"\n`;
+                csv += `"${r.expediente}","${r.nombre || ''}","${r.categoria || 'Prevalente'}","${r.month}","${r.estado}","${r.beck}","${r.moca}","${r.eat}","${r.autoeficacia}","${r.red}","${r.conflicto}","${r.transgresion}","${r.psicosocial}","${r.referimiento}"\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -675,7 +660,6 @@
             document.body.removeChild(link);
         });
 
-        // INICIALIZACIÓN
         document.addEventListener('DOMContentLoaded', initData);
     </script>
 </body>
