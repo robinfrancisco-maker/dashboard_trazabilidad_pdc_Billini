@@ -147,10 +147,10 @@
             </div>
         </div>
         <div class="glass-card rounded-2xl p-4 shadow-sm border-l-4 border-emerald-500">
-            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tasa de Estabilidad</p>
+            <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tasa de Estabilidad Homeostática</p>
             <div class="flex justify-between items-baseline mt-2">
                 <span id="kpiEstablesPct" class="text-3xl font-extrabold text-emerald-600">0%</span>
-                <span id="kpiRiesgoCount" class="text-xs text-rose-600 font-semibold">0 En riesgo medio/alto</span>
+                <span id="kpiRiesgoCount" class="text-xs text-rose-600 font-semibold">0 En decaimiento</span>
             </div>
         </div>
         <div class="glass-card rounded-2xl p-4 shadow-sm border-l-4 border-rose-600">
@@ -162,18 +162,21 @@
         </div>
     </section>
 
-    <!-- SECCIÓN DINÁMICA DE VISTA DE TRAZABILIDAD Y GRÁFICO DEL PACIENTE -->
+    <!-- SECCIÓN DINÁMICA DE VISTA DE TRAZABILIDAD Y GRÁFICO HOMEOSTÁTICO -->
     <section id="patientTimelineContainer" class="max-w-7xl mx-auto mb-6 glass-card rounded-2xl p-5 shadow-sm hidden">
         <div id="patientHeaderInfo" class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 mb-4 border-b border-slate-200">
             <!-- Inyectado por JS -->
         </div>
 
-        <!-- GRÁFICO EVOLUTIVO DEL PACIENTE -->
+        <!-- GRÁFICO HOMEOSTÁTICO / EVOLUCIÓN LONGITUDINAL -->
         <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <i class="fa-solid fa-chart-line text-indigo-600"></i> Evolución Longitudinal del Nivel de Riesgo del Paciente
-            </h4>
-            <div class="h-48 w-full">
+            <div class="flex justify-between items-center mb-2">
+                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line text-indigo-600"></i> Kurva Homeostática de Estabilidad del Paciente
+                </h4>
+                <span class="text-[11px] font-medium text-slate-500 italic">Línea basal 100% = Nivel de Equilibrio Homeostático</span>
+            </div>
+            <div class="h-56 w-full">
                 <canvas id="patientTrendChart"></canvas>
             </div>
         </div>
@@ -270,7 +273,7 @@
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Estado Global / Nivel de Riesgo *</label>
                     <select id="inputEstado" required class="w-full p-2.5 border rounded-lg bg-slate-50">
-                        <option value="Estable">Sin Riesgo / Estable</option>
+                        <option value="Estable">Sin Riesgo / Estable (Homeostasis)</option>
                         <option value="Riesgo Bajo">Riesgo Bajo (Déficit compensado por red)</option>
                         <option value="Riesgo Medio">Riesgo Medio (Adherencia / Conflicto)</option>
                         <option value="No Estable / En Riesgo">Riesgo Alto / Elevado / No Estable</option>
@@ -353,7 +356,6 @@
             localStorage.setItem('pdc_trazabilidad_dataset', JSON.stringify(currentDataset));
         }
 
-        // Asignación estricta de colores según estado/riesgo
         function getBadgeClass(estado) {
             const st = cleanStr(estado);
             if (st.includes('alto') || st.includes('elevado') || st.includes('no estable') || st.includes('riesgo')) {
@@ -387,7 +389,6 @@
                 const matchesMonth = monthVal === "" || itemMonth.includes(monthVal);
                 const matchesCat = catVal === "" || itemCat.includes(catVal);
 
-                // Lógica de filtrado dinámico para riesgo
                 let matchesEstado = false;
                 if (estadoVal === "") {
                     matchesEstado = true;
@@ -486,6 +487,7 @@
             }
         }
 
+        // DIBUJAR GRÁFICO HOMEOSTÁTICO / DECAIMIENTO CLÍNICO
         function renderPatientChart(data) {
             const ctx = document.getElementById('patientTrendChart').getContext('2d');
             
@@ -494,29 +496,47 @@
             }
 
             const months = data.map(d => d.month);
-            const riesgoScores = data.map(d => {
+            
+            // Puntuación de Estabilidad Homeostática (Basal = 100%, Decaimiento = Valores menores)
+            const homeostasisScores = data.map(d => {
                 const st = cleanStr(d.estado);
-                if (st.includes('alto') || st.includes('elevado') || st.includes('no')) return 100;
-                if (st.includes('medio')) return 65;
-                if (st.includes('bajo')) return 35;
-                return 0; // Sin riesgo / Estable
+                if (st.includes('alto') || st.includes('elevado') || st.includes('no')) return 30; // Decaimiento severo / Alerta
+                if (st.includes('medio')) return 65; // Caída moderada
+                if (st.includes('bajo')) return 85; // Leve inflexión compensada
+                return 100; // Estabilidad Homeostática Basal
             });
 
             trendChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: months,
-                    datasets: [{
-                        label: 'Nivel de Riesgo Clínico Operativo (%)',
-                        data: riesgoScores,
-                        borderColor: '#e11d48',
-                        backgroundColor: 'rgba(225, 29, 72, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 6,
-                        pointBackgroundColor: '#be123c'
-                    }]
+                    datasets: [
+                        {
+                            label: 'Línea Basal de Homeostasis (100%)',
+                            data: Array(months.length).fill(100),
+                            borderColor: '#94a3b8',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            pointRadius: 0,
+                            fill: false
+                        },
+                        {
+                            label: 'Evolución Homeostática del Paciente (%)',
+                            data: homeostasisScores,
+                            borderColor: '#0284c7',
+                            backgroundColor: 'rgba(2, 132, 199, 0.12)',
+                            borderWidth: 3,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 7,
+                            pointBackgroundColor: function(context) {
+                                const val = context.dataset.data[context.dataIndex];
+                                if (val <= 30) return '#dc2626'; // Rojo si cae a riesgo alto
+                                if (val <= 65) return '#d97706'; // Amarillo
+                                return '#16a34a'; // Verde
+                            }
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
@@ -524,13 +544,13 @@
                     scales: {
                         y: {
                             min: 0,
-                            max: 110,
+                            max: 120,
                             ticks: {
                                 callback: function(val) {
-                                    if (val === 100) return 'Riesgo Alto';
-                                    if (val === 65) return 'Riesgo Medio';
-                                    if (val === 35) return 'Riesgo Bajo';
-                                    if (val === 0) return 'Estable';
+                                    if (val === 100) return '100% Homeostasis (Estable)';
+                                    if (val === 85) return '85% Riesgo Bajo';
+                                    if (val === 65) return '65% Riesgo Medio';
+                                    if (val === 30) return '30% Decaimiento (Riesgo Alto)';
                                     return '';
                                 }
                             }
@@ -609,7 +629,7 @@
             document.getElementById('kpiIncidentesCount').innerText = incidentesCount + " Incid.";
             document.getElementById('kpiPrevalentesCount').innerText = prevalentesCount + " Preval.";
             document.getElementById('kpiEstablesPct').innerText = establesPct + "%";
-            document.getElementById('kpiRiesgoCount').innerText = (totalEvaluations - establesCount) + " En riesgo medio/alto";
+            document.getElementById('kpiRiesgoCount').innerText = (totalEvaluations - establesCount) + " En decaimiento";
             document.getElementById('kpiAlertasCriticas').innerText = alertasCount;
             document.getElementById('recordsCountBadge').innerText = `${totalEvaluations} registros mostrados`;
         }
