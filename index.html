@@ -109,10 +109,10 @@
                 <label class="block text-[11px] font-bold text-slate-600 mb-1">Estado Global / Riesgo</label>
                 <select id="filterEstado" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
                     <option value="">Todos los Niveles</option>
-                    <option value="Sin Riesgo / Estable">Sin Riesgo / Estable</option>
-                    <option value="Riesgo Bajo">Riesgo Bajo (Compensado)</option>
-                    <option value="Riesgo Medio">Riesgo Medio</option>
-                    <option value="Riesgo Alto / Elevado">Riesgo Alto / Elevado</option>
+                    <option value="estable">Sin Riesgo / Estable</option>
+                    <option value="bajo">Riesgo Bajo (Compensado)</option>
+                    <option value="medio">Riesgo Medio</option>
+                    <option value="alto">Riesgo Alto / Elevado</option>
                 </select>
             </div>
             <div>
@@ -150,7 +150,7 @@
             <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tasa de Estabilidad</p>
             <div class="flex justify-between items-baseline mt-2">
                 <span id="kpiEstablesPct" class="text-3xl font-extrabold text-emerald-600">0%</span>
-                <span id="kpiRiesgoCount" class="text-xs text-rose-600 font-semibold">0 En riesgo alto/medio</span>
+                <span id="kpiRiesgoCount" class="text-xs text-rose-600 font-semibold">0 En riesgo medio/alto</span>
             </div>
         </div>
         <div class="glass-card rounded-2xl p-4 shadow-sm border-l-4 border-rose-600">
@@ -379,7 +379,21 @@
                 const matchesSearch = searchVal === "" || itemExp.includes(searchVal) || itemNom.includes(searchVal);
                 const matchesMonth = monthVal === "" || itemMonth.includes(monthVal);
                 const matchesCat = catVal === "" || itemCat.includes(catVal);
-                const matchesEstado = estadoVal === "" || itemEstado.includes(estadoVal);
+
+                // Lógica flexible de emparejamiento por Nivel de Riesgo
+                let matchesEstado = false;
+                if (estadoVal === "") {
+                    matchesEstado = true;
+                } else if (estadoVal === "estable") {
+                    matchesEstado = itemEstado.includes("estable") || itemEstado.includes("sin riesgo") || (!itemEstado.includes("riesgo") && !itemEstado.includes("no"));
+                } else if (estadoVal === "bajo") {
+                    matchesEstado = itemEstado.includes("bajo");
+                } else if (estadoVal === "medio") {
+                    matchesEstado = itemEstado.includes("medio");
+                } else if (estadoVal === "alto") {
+                    matchesEstado = itemEstado.includes("alto") || itemEstado.includes("elevado") || itemEstado.includes("no estable") || itemEstado.includes("riesgo");
+                }
+
                 const matchesRef = refVal === "" || itemRef.includes(refVal);
 
                 return matchesSearch && matchesMonth && matchesCat && matchesEstado && matchesRef;
@@ -475,7 +489,7 @@
             const months = data.map(d => d.month);
             const riesgoScores = data.map(d => {
                 const st = cleanStr(d.estado);
-                if (st.includes('alto') || st.includes('elevado')) return 100;
+                if (st.includes('alto') || st.includes('elevado') || st.includes('no estable')) return 100;
                 if (st.includes('medio')) return 65;
                 if (st.includes('bajo')) return 35;
                 return 0; // Sin riesgo / Estable
@@ -574,13 +588,13 @@
 
             const establesCount = data.filter(f => {
                 const st = cleanStr(f.estado);
-                return st.includes('estable') || st.includes('bajo');
+                return st.includes('estable') || st.includes('bajo') || st === 'sin riesgo';
             }).length;
 
             const establesPct = totalEvaluations > 0 ? Math.round((establesCount / totalEvaluations) * 100) : 0;
             const alertasCount = data.filter(f => {
                 const st = cleanStr(f.estado);
-                return st.includes('medio') || st.includes('alto') || st.includes('elevado') || (f.referimiento && f.referimiento !== "Ninguno");
+                return st.includes('medio') || st.includes('alto') || st.includes('elevado') || st.includes('no estable') || (f.referimiento && f.referimiento !== "Ninguno");
             }).length;
 
             document.getElementById('kpiUniquePatients').innerText = uniquePatients;
