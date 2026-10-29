@@ -170,7 +170,7 @@
                 <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-table-list text-indigo-900"></i> Vista de Trazabilidad Clínica Detallada
                 </h3>
-                <p class="text-xs text-slate-500">Muestra la secuencia cronológica de consultas para todos los pacientes con categorización de incidentes/prevalentes.</p>
+                <p class="text-xs text-slate-500">Muestra la secuencia cronológica de consultas para todos los pacientes.</p>
             </div>
             <div id="recordsCountBadge" class="text-xs font-bold text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
                 0 registros mostrados
@@ -200,7 +200,7 @@
                 </thead>
                 <tbody id="tableBodyExpedientes" class="divide-y divide-slate-200 bg-white">
                     <tr>
-                        <td colspan="15" class="p-8 text-center text-slate-400 italic">Cargando base de datos...</td>
+                        <td colspan="15" class="p-8 text-center text-slate-400 italic">No hay datos en la base de datos local.</td>
                     </tr>
                 </tbody>
             </table>
@@ -309,28 +309,15 @@
 
     <!-- SCRIPT DE CONTROL Y LÓGICA INTEGRA -->
     <script>
-        const BASE_INITIAL_DATA = [
-            // Femenina Incidente (Nuevo ingreso de prueba)
-            {expediente:"31005", nombre:"Juana de la Rosa", categoria:"Incidente", month:"Octubre", estado:"Estable", beck:"5 pts (Mínima)", moca:"En norma", eat:"95% (Eficiente)", autoeficacia:"Autosuficiente", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Evaluación inicial de ingreso PDC", referimiento:"Ninguno"},
-
-            // Prevalentes
-            {expediente:"30032", nombre:"María Altagracia Pérez", categoria:"Prevalente", month:"Abril", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"No registrado", autoeficacia:"Terapia Asistida Parcial", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
-            {expediente:"30032", nombre:"María Altagracia Pérez", categoria:"Prevalente", month:"Junio", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"91.7% (Eficiente)", autoeficacia:"Autosuficiente", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Bajo riesgo social", referimiento:"Ninguno"},
-            {expediente:"30032", nombre:"María Altagracia Pérez", categoria:"Prevalente", month:"Octubre", estado:"No Estable / En Riesgo", beck:"No registrado", moca:"13/22 (DCL)", eat:"91.7% (Eficiente)", autoeficacia:"Terapia Asistida Total", red:"Deficiente", conflicto:"Sin conflicto", transgresion:"Bioseguridad", psicosocial:"Déficit visual severo", referimiento:"Neurología"},
-
-            {expediente:"29947", nombre:"José Antonio Rodríguez", categoria:"Prevalente", month:"Abril", estado:"Estable", beck:"No registrado", moca:"En norma", eat:"No registrado", autoeficacia:"Autosuficiente", red:"Eficiente", conflicto:"Sin conflicto", transgresion:"Ninguna", psicosocial:"Sin $ fármacos", referimiento:"Ninguno"},
-            {expediente:"29947", nombre:"José Antonio Rodríguez", categoria:"Prevalente", month:"Octubre", estado:"No Estable / En Riesgo", beck:"No registrado", moca:"17/22 (DCL)", eat:"No registrado", autoeficacia:"Autosuficiente", red:"Deficiente", conflicto:"Sin conflicto", transgresion:"Registro/Asepsia", psicosocial:"Falla de supervisión", referimiento:"Enfermería PDC"}
-        ];
-
         let currentDataset = [];
 
         function initData() {
             const saved = localStorage.getItem('pdc_trazabilidad_dataset');
             if (saved) {
                 try { currentDataset = JSON.parse(saved); } 
-                catch(e) { currentDataset = [...BASE_INITIAL_DATA]; }
+                catch(e) { currentDataset = []; }
             } else {
-                currentDataset = [...BASE_INITIAL_DATA];
+                currentDataset = [];
             }
             renderDashboard();
         }
@@ -443,7 +430,7 @@
             tbody.innerHTML = "";
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-rose-500 font-semibold">No se encontraron registros con los criterios seleccionados.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-slate-400 font-semibold italic">No hay registros en la base de datos. Carga una matriz Excel/CSV o agrega un nuevo expediente.</td></tr>`;
                 return;
             }
 
@@ -486,9 +473,8 @@
             const uniquePatients = new Set(data.map(f => f.expediente)).size;
             const totalEvaluations = data.length;
             
-            // Conteo Epidemiológico
-            const incidentesCount = new Set(data.filter(f => (f.categoria || 'Prevalente') === 'Incidente').map(f => f.expediente)).size;
-            const prevalentesCount = uniquePatients - incidentesCount;
+            const incidentesCount = data.length > 0 ? new Set(data.filter(f => (f.categoria || 'Prevalente') === 'Incidente').map(f => f.expediente)).size : 0;
+            const prevalentesCount = data.length > 0 ? (uniquePatients - incidentesCount) : 0;
 
             const establesCount = data.filter(f => f.estado.includes("Estable") && !f.estado.includes("No")).length;
             const establesPct = totalEvaluations > 0 ? Math.round((establesCount / totalEvaluations) * 100) : 0;
@@ -548,7 +534,7 @@
                     renderDashboard();
                     alert(`¡Importación exitosa! Se han añadido ${newRecords.length} registros a la matriz.`);
                 } catch (err) {
-                    alert("Asegúrate de seleccionar un archivo Excel (.xlsx) o CSV válido.");
+                    alert("Asegúrate de seleccionar un archivo Excel (.xlsx) or CSV válido.");
                 }
             };
             reader.readAsArrayBuffer(file);
@@ -636,9 +622,9 @@
         });
 
         document.getElementById('clearMemoryBtn').addEventListener('click', () => {
-            if (confirm("¿Deseas restaurar la base de datos a su estado inicial?")) {
+            if (confirm("¿Deseas vaciar la memoria local y borrar todos los datos guardados?")) {
                 localStorage.removeItem('pdc_trazabilidad_dataset');
-                currentDataset = [...BASE_INITIAL_DATA];
+                currentDataset = [];
                 renderDashboard();
             }
         });
