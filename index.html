@@ -6,7 +6,7 @@
     <title>Dashboard Dinámico de Trazabilidad Clínica PDC 2026</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN para gráficos dinámicos -->
+    <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS (xlsx.full.min.js) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -15,9 +15,14 @@
     <style>
         body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f8fafc; }
         .glass-card { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; }
+        
+        /* Badges de Riesgo Ponderado */
         .badge-estable { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
-        .badge-riesgo { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-        .badge-incidente { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .badge-riesgo-bajo { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+        .badge-riesgo-medio { background-color: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+        .badge-riesgo-alto { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+
+        .badge-incidente { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
         .badge-prevalente { background-color: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
     </style>
 </head>
@@ -101,11 +106,13 @@
                 </select>
             </div>
             <div>
-                <label class="block text-[11px] font-bold text-slate-600 mb-1">Estado Global</label>
+                <label class="block text-[11px] font-bold text-slate-600 mb-1">Estado Global / Riesgo</label>
                 <select id="filterEstado" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-indigo-500 outline-none font-medium">
-                    <option value="">Todos los Estados</option>
-                    <option value="Estable">Estable</option>
-                    <option value="No Estable / En Riesgo">No Estable / En Riesgo</option>
+                    <option value="">Todos los Niveles</option>
+                    <option value="Sin Riesgo / Estable">Sin Riesgo / Estable</option>
+                    <option value="Riesgo Bajo">Riesgo Bajo (Compensado)</option>
+                    <option value="Riesgo Medio">Riesgo Medio</option>
+                    <option value="Riesgo Alto / Elevado">Riesgo Alto / Elevado</option>
                 </select>
             </div>
             <div>
@@ -143,7 +150,7 @@
             <p class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tasa de Estabilidad</p>
             <div class="flex justify-between items-baseline mt-2">
                 <span id="kpiEstablesPct" class="text-3xl font-extrabold text-emerald-600">0%</span>
-                <span id="kpiRiesgoCount" class="text-xs text-rose-600 font-semibold">0 En riesgo</span>
+                <span id="kpiRiesgoCount" class="text-xs text-rose-600 font-semibold">0 En riesgo alto/medio</span>
             </div>
         </div>
         <div class="glass-card rounded-2xl p-4 shadow-sm border-l-4 border-rose-600">
@@ -164,7 +171,7 @@
         <!-- GRÁFICO EVOLUTIVO DEL PACIENTE -->
         <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
             <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
-                <i class="fa-solid fa-chart-line text-indigo-600"></i> Evolución Longitudinal del Paciente
+                <i class="fa-solid fa-chart-line text-indigo-600"></i> Evolución Longitudinal del Nivel de Riesgo del Paciente
             </h4>
             <div class="h-48 w-full">
                 <canvas id="patientTrendChart"></canvas>
@@ -183,7 +190,7 @@
                 <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-table-list text-indigo-900"></i> Vista de Trazabilidad Clínica Detallada
                 </h3>
-                <p class="text-xs text-slate-500">Muestra la secuencia de consultas registradas en la matriz.</p>
+                <p class="text-xs text-slate-500">Muestra la secuencia de consultas con estratificación de riesgo por factor protector de la red social.</p>
             </div>
             <div id="recordsCountBadge" class="text-xs font-bold text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
                 0 registros mostrados
@@ -199,7 +206,7 @@
                         <th class="p-3">Nombre del Paciente</th>
                         <th class="p-3">Categoría</th>
                         <th class="p-3">Año/Mes</th>
-                        <th class="p-3">Estado Global</th>
+                        <th class="p-3">Estado / Riesgo</th>
                         <th class="p-3">Depresión (Beck)</th>
                         <th class="p-3">Cognición (MoCA)</th>
                         <th class="p-3">Adherencia (EAT)</th>
@@ -213,7 +220,7 @@
                 </thead>
                 <tbody id="tableBodyExpedientes" class="divide-y divide-slate-200 bg-white">
                     <tr>
-                        <td colspan="15" class="p-8 text-center text-slate-400 font-semibold italic">No hay registros en la base de datos local. Carga una matriz Excel/CSV.</td>
+                        <td colspan="15" class="p-8 text-center text-slate-400 font-semibold italic">No hay registros en la base de datos local. Carga una matriz Excel/CSV o agrega un expediente.</td>
                     </tr>
                 </tbody>
             </table>
@@ -261,10 +268,12 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block font-bold text-slate-700 mb-1">Estado Global *</label>
+                    <label class="block font-bold text-slate-700 mb-1">Estado Global / Nivel de Riesgo *</label>
                     <select id="inputEstado" required class="w-full p-2.5 border rounded-lg bg-slate-50">
-                        <option value="Estable">Estable</option>
-                        <option value="No Estable / En Riesgo">No Estable / En Riesgo</option>
+                        <option value="Sin Riesgo / Estable">Sin Riesgo / Estable</option>
+                        <option value="Riesgo Bajo">Riesgo Bajo (Déficit compensado por red)</option>
+                        <option value="Riesgo Medio">Riesgo Medio (Adherencia / Conflicto)</option>
+                        <option value="Riesgo Alto / Elevado">Riesgo Alto / Elevado (Alerta Bioseguridad)</option>
                     </select>
                 </div>
                 <div>
@@ -290,7 +299,7 @@
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Red de Apoyo</label>
                     <select id="inputRed" class="w-full p-2.5 border rounded-lg bg-slate-50">
-                        <option value="Eficiente">Eficiente</option>
+                        <option value="Eficiente">Eficiente (Factor Protector)</option>
                         <option value="Deficiente">Deficiente</option>
                         <option value="Ausente">Ausente</option>
                     </select>
@@ -325,7 +334,6 @@
         let currentDataset = [];
         let trendChartInstance = null;
 
-        // Normalizador de texto para búsquedas y meses flexibilizados
         function cleanStr(str) {
             return String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
         }
@@ -343,6 +351,14 @@
 
         function saveData() {
             localStorage.setItem('pdc_trazabilidad_dataset', JSON.stringify(currentDataset));
+        }
+
+        function getBadgeClass(estado) {
+            const st = cleanStr(estado);
+            if (st.includes('alto') || st.includes('elevado')) return 'badge-riesgo-alto';
+            if (st.includes('medio')) return 'badge-riesgo-medio';
+            if (st.includes('bajo')) return 'badge-riesgo-bajo';
+            return 'badge-estable';
         }
 
         function renderDashboard() {
@@ -403,15 +419,13 @@
                     </div>
                 `;
 
-                // Renderizar gráfico de tendencia
                 renderPatientChart(filteredData);
 
                 cardsContainer.innerHTML = "";
                 
                 filteredData.forEach(r => {
                     const idxInMain = currentDataset.indexOf(r);
-                    const isEstable = r.estado.includes("Estable") && !r.estado.includes("No");
-                    const badgeClass = isEstable ? "badge-estable" : "badge-riesgo";
+                    const badgeClass = getBadgeClass(r.estado);
 
                     const card = document.createElement('div');
                     card.className = "bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition relative flex flex-col justify-between";
@@ -429,7 +443,7 @@
                                 <div class="flex justify-between"><span class="text-slate-500">Cognición (MoCA):</span> <span class="font-semibold text-slate-900">${r.moca || 'No reg.'}</span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">Adherencia (EAT):</span> <span class="font-semibold">${r.eat || 'No reg.'}</span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">Autoeficacia:</span> <span class="font-semibold">${r.autoeficacia || 'Autosuficiente'}</span></div>
-                                <div class="flex justify-between"><span class="text-slate-500">Red de Apoyo:</span> <span class="font-semibold">${r.red || 'Eficiente'}</span></div>
+                                <div class="flex justify-between"><span class="text-slate-500">Red de Apoyo:</span> <span class="font-bold text-indigo-900">${r.red || 'Eficiente'}</span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">Conflictos:</span> <span class="font-semibold text-slate-800">${r.conflicto || 'Sin conflicto'}</span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">Transgresión:</span> <span class="font-semibold text-slate-800">${r.transgresion || 'Ninguna'}</span></div>
                                 <div class="flex justify-between"><span class="text-slate-500">Referimiento:</span> <span class="font-bold text-indigo-800">${r.referimiento || 'Ninguno'}</span></div>
@@ -451,7 +465,6 @@
             }
         }
 
-        // DIBUJAR GRÁFICO DINÁMICO DE TENDENCIA INDIVIDUAL (Chart.js)
         function renderPatientChart(data) {
             const ctx = document.getElementById('patientTrendChart').getContext('2d');
             
@@ -460,22 +473,28 @@
             }
 
             const months = data.map(d => d.month);
-            const estadosScores = data.map(d => (d.estado.includes('Estable') && !d.estado.includes('No')) ? 100 : 40);
+            const riesgoScores = data.map(d => {
+                const st = cleanStr(d.estado);
+                if (st.includes('alto') || st.includes('elevado')) return 100;
+                if (st.includes('medio')) return 65;
+                if (st.includes('bajo')) return 35;
+                return 0; // Sin riesgo / Estable
+            });
 
             trendChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: months,
                     datasets: [{
-                        label: 'Índice de Estabilidad Clínica (%)',
-                        data: estadosScores,
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        label: 'Nivel de Riesgo Clínico Operativo (%)',
+                        data: riesgoScores,
+                        borderColor: '#e11d48',
+                        backgroundColor: 'rgba(225, 29, 72, 0.1)',
                         borderWidth: 3,
                         fill: true,
                         tension: 0.3,
                         pointRadius: 6,
-                        pointBackgroundColor: '#1d4ed8'
+                        pointBackgroundColor: '#be123c'
                     }]
                 },
                 options: {
@@ -484,11 +503,13 @@
                     scales: {
                         y: {
                             min: 0,
-                            max: 120,
+                            max: 110,
                             ticks: {
                                 callback: function(val) {
-                                    if (val === 100) return 'Estable';
-                                    if (val === 40) return 'En Riesgo';
+                                    if (val === 100) return 'Riesgo Alto';
+                                    if (val === 65) return 'Riesgo Medio';
+                                    if (val === 35) return 'Riesgo Bajo';
+                                    if (val === 0) return 'Estable';
                                     return '';
                                 }
                             }
@@ -515,8 +536,7 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-50 transition border-b border-slate-100";
 
-                const isEstable = r.estado.includes("Estable") && !r.estado.includes("No");
-                const badgeClass = isEstable ? "badge-estable" : "badge-riesgo";
+                const badgeClass = getBadgeClass(r.estado);
                 const cat = r.categoria || "Prevalente";
                 const catBadge = cat === 'Incidente' ? 'badge-incidente' : 'badge-prevalente';
 
@@ -535,7 +555,7 @@
                     <td class="p-3 font-medium text-slate-900">${r.moca || 'En norma'}</td>
                     <td class="p-3 text-slate-700">${r.eat || 'No registrado'}</td>
                     <td class="p-3 font-semibold text-slate-700">${r.autoeficacia || 'Autosuficiente'}</td>
-                    <td class="p-3 text-slate-700">${r.red || 'Eficiente'}</td>
+                    <td class="p-3 font-bold text-indigo-900">${r.red || 'Eficiente'}</td>
                     <td class="p-3 text-slate-600">${r.conflicto || 'Sin conflicto'}</td>
                     <td class="p-3 text-slate-600">${r.transgresion || 'Ninguna'}</td>
                     <td class="p-3 text-slate-600">${r.psicosocial || 'Bajo riesgo'}</td>
@@ -552,16 +572,23 @@
             const incidentesCount = data.length > 0 ? new Set(data.filter(f => (f.categoria || 'Prevalente') === 'Incidente').map(f => f.expediente)).size : 0;
             const prevalentesCount = data.length > 0 ? (uniquePatients - incidentesCount) : 0;
 
-            const establesCount = data.filter(f => f.estado.includes("Estable") && !f.estado.includes("No")).length;
+            const establesCount = data.filter(f => {
+                const st = cleanStr(f.estado);
+                return st.includes('estable') || st.includes('bajo');
+            }).length;
+
             const establesPct = totalEvaluations > 0 ? Math.round((establesCount / totalEvaluations) * 100) : 0;
-            const alertasCount = data.filter(f => f.estado.includes("Riesgo") || (f.referimiento && f.referimiento !== "Ninguno")).length;
+            const alertasCount = data.filter(f => {
+                const st = cleanStr(f.estado);
+                return st.includes('medio') || st.includes('alto') || st.includes('elevado') || (f.referimiento && f.referimiento !== "Ninguno");
+            }).length;
 
             document.getElementById('kpiUniquePatients').innerText = uniquePatients;
             document.getElementById('kpiTotalEvaluations').innerText = totalEvaluations + " Evaluaciones";
             document.getElementById('kpiIncidentesCount').innerText = incidentesCount + " Incid.";
             document.getElementById('kpiPrevalentesCount').innerText = prevalentesCount + " Preval.";
             document.getElementById('kpiEstablesPct').innerText = establesPct + "%";
-            document.getElementById('kpiRiesgoCount').innerText = (totalEvaluations - establesCount) + " En riesgo";
+            document.getElementById('kpiRiesgoCount').innerText = (totalEvaluations - establesCount) + " En riesgo medio/alto";
             document.getElementById('kpiAlertasCriticas').innerText = alertasCount;
             document.getElementById('recordsCountBadge').innerText = `${totalEvaluations} registros mostrados`;
         }
@@ -592,7 +619,7 @@
                             nombre: String(findKey(['nombre', 'paciente']) || 'Paciente PDC').trim(),
                             categoria: String(findKey(['categoria', 'tipo', 'ingreso']) || 'Prevalente').trim(),
                             month: String(findKey(['mes', 'month', 'fecha']) || 'Octubre').trim(),
-                            estado: String(findKey(['estado']) || 'Estable').trim(),
+                            estado: String(findKey(['estado', 'riesgo']) || 'Sin Riesgo / Estable').trim(),
                             beck: String(findKey(['beck', 'depresion']) || 'No registrado').trim(),
                             moca: String(findKey(['moca', 'cognicion']) || 'En norma').trim(),
                             eat: String(findKey(['eat', 'adherencia']) || 'No registrado').trim(),
@@ -626,7 +653,7 @@
             document.getElementById('inputNombre').value = r.nombre || '';
             document.getElementById('inputCategoria').value = r.categoria || 'Prevalente';
             document.getElementById('inputMonth').value = r.month || 'Octubre';
-            document.getElementById('inputEstado').value = r.estado.includes('Riesgo') ? 'No Estable / En Riesgo' : 'Estable';
+            document.getElementById('inputEstado').value = r.estado || 'Sin Riesgo / Estable';
             document.getElementById('inputBeck').value = r.beck || '';
             document.getElementById('inputMoca').value = r.moca || '';
             document.getElementById('inputEat').value = r.eat || '';
