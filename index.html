@@ -16,7 +16,7 @@
         body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background-color: #f8fafc; }
         .glass-card { background: rgba(255, 255, 255, 0.98); backdrop-filter: blur(10px); border: 1px solid #e2e8f0; }
         
-        /* Badges de Riesgo Ponderado */
+        /* Badges de Riesgo Ponderado con Colores Estrictos */
         .badge-estable { background-color: #dcfce7; color: #15803d; border: 1px solid #86efac; }
         .badge-riesgo-bajo { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
         .badge-riesgo-medio { background-color: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
@@ -112,7 +112,7 @@
                     <option value="estable">Sin Riesgo / Estable</option>
                     <option value="bajo">Riesgo Bajo (Compensado)</option>
                     <option value="medio">Riesgo Medio</option>
-                    <option value="alto">Riesgo Alto / Elevado</option>
+                    <option value="alto">Riesgo Alto / Elevado / No Estable</option>
                 </select>
             </div>
             <div>
@@ -273,7 +273,7 @@
                         <option value="Estable">Sin Riesgo / Estable</option>
                         <option value="Riesgo Bajo">Riesgo Bajo (Déficit compensado por red)</option>
                         <option value="Riesgo Medio">Riesgo Medio (Adherencia / Conflicto)</option>
-                        <option value="Riesgo Alto / Elevado">Riesgo Alto / Elevado (Alerta Bioseguridad)</option>
+                        <option value="No Estable / En Riesgo">Riesgo Alto / Elevado / No Estable</option>
                     </select>
                 </div>
                 <div>
@@ -353,12 +353,19 @@
             localStorage.setItem('pdc_trazabilidad_dataset', JSON.stringify(currentDataset));
         }
 
+        // Asignación estricta de colores según estado/riesgo
         function getBadgeClass(estado) {
             const st = cleanStr(estado);
-            if (st.includes('alto') || st.includes('elevado')) return 'badge-riesgo-alto';
-            if (st.includes('medio')) return 'badge-riesgo-medio';
-            if (st.includes('bajo')) return 'badge-riesgo-bajo';
-            return 'badge-estable';
+            if (st.includes('alto') || st.includes('elevado') || st.includes('no estable') || st.includes('riesgo')) {
+                return 'badge-riesgo-alto'; // ROJO
+            }
+            if (st.includes('medio')) {
+                return 'badge-riesgo-medio'; // AMARILLO
+            }
+            if (st.includes('bajo')) {
+                return 'badge-riesgo-bajo'; // AZUL
+            }
+            return 'badge-estable'; // VERDE
         }
 
         function renderDashboard() {
@@ -380,18 +387,18 @@
                 const matchesMonth = monthVal === "" || itemMonth.includes(monthVal);
                 const matchesCat = catVal === "" || itemCat.includes(catVal);
 
-                // Lógica de filtro flexibilizada para el nivel de riesgo/estado global
+                // Lógica de filtrado dinámico para riesgo
                 let matchesEstado = false;
                 if (estadoVal === "") {
                     matchesEstado = true;
                 } else if (estadoVal === "estable") {
-                    matchesEstado = itemEstado.includes("estable") || itemEstado.includes("sin riesgo") || (!itemEstado.includes("riesgo") && !itemEstado.includes("no"));
+                    matchesEstado = itemEstado === "estable" || itemEstado.includes("sin riesgo") || (!itemEstado.includes("riesgo") && !itemEstado.includes("no"));
                 } else if (estadoVal === "bajo") {
                     matchesEstado = itemEstado.includes("bajo") || itemEstado.includes("compensado");
                 } else if (estadoVal === "medio") {
                     matchesEstado = itemEstado.includes("medio");
                 } else if (estadoVal === "alto") {
-                    matchesEstado = itemEstado.includes("alto") || itemEstado.includes("elevado") || itemEstado.includes("no estable") || itemEstado.includes("riesgo");
+                    matchesEstado = itemEstado.includes("alto") || itemEstado.includes("elevado") || itemEstado.includes("no") || itemEstado.includes("riesgo");
                 }
 
                 const matchesRef = refVal === "" || itemRef.includes(refVal);
@@ -489,7 +496,7 @@
             const months = data.map(d => d.month);
             const riesgoScores = data.map(d => {
                 const st = cleanStr(d.estado);
-                if (st.includes('alto') || st.includes('elevado') || st.includes('no estable')) return 100;
+                if (st.includes('alto') || st.includes('elevado') || st.includes('no')) return 100;
                 if (st.includes('medio')) return 65;
                 if (st.includes('bajo')) return 35;
                 return 0; // Sin riesgo / Estable
@@ -588,13 +595,13 @@
 
             const establesCount = data.filter(f => {
                 const st = cleanStr(f.estado);
-                return st.includes('estable') || st.includes('bajo') || st === 'sin riesgo';
+                return (st.includes('estable') || st.includes('bajo')) && !st.includes('no');
             }).length;
 
             const establesPct = totalEvaluations > 0 ? Math.round((establesCount / totalEvaluations) * 100) : 0;
             const alertasCount = data.filter(f => {
                 const st = cleanStr(f.estado);
-                return st.includes('medio') || st.includes('alto') || st.includes('elevado') || st.includes('no estable') || (f.referimiento && cleanStr(f.referimiento) !== "ninguno");
+                return st.includes('medio') || st.includes('alto') || st.includes('elevado') || st.includes('no') || (f.referimiento && cleanStr(f.referimiento) !== "ninguno");
             }).length;
 
             document.getElementById('kpiUniquePatients').innerText = uniquePatients;
