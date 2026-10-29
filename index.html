@@ -6,6 +6,8 @@
     <title>Dashboard Dinámico de Trazabilidad Clínica PDC 2026</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN para gráficos dinámicos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- SheetJS (xlsx.full.min.js) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <!-- FontAwesome Icons -->
@@ -153,11 +155,22 @@
         </div>
     </section>
 
-    <!-- SECCIÓN DINÁMICA DE VISTA DE TRAZABILIDAD DEL PACIENTE (TIMELINE HISTÓRICO) -->
+    <!-- SECCIÓN DINÁMICA DE VISTA DE TRAZABILIDAD Y GRÁFICO DEL PACIENTE -->
     <section id="patientTimelineContainer" class="max-w-7xl mx-auto mb-6 glass-card rounded-2xl p-5 shadow-sm hidden">
         <div id="patientHeaderInfo" class="flex flex-col md:flex-row justify-between items-start md:items-center pb-4 mb-4 border-b border-slate-200">
             <!-- Inyectado por JS -->
         </div>
+
+        <!-- GRÁFICO EVOLUTIVO DEL PACIENTE -->
+        <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-indigo-600"></i> Evolución Longitudinal del Paciente
+            </h4>
+            <div class="h-48 w-full">
+                <canvas id="patientTrendChart"></canvas>
+            </div>
+        </div>
+
         <div id="patientTimelineCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Inyectado por JS -->
         </div>
@@ -170,7 +183,7 @@
                 <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                     <i class="fa-solid fa-table-list text-indigo-900"></i> Vista de Trazabilidad Clínica Detallada
                 </h3>
-                <p class="text-xs text-slate-500">Muestra la secuencia cronológica de consultas para todos los pacientes.</p>
+                <p class="text-xs text-slate-500">Muestra la secuencia de consultas registradas en la matriz.</p>
             </div>
             <div id="recordsCountBadge" class="text-xs font-bold text-indigo-900 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-full">
                 0 registros mostrados
@@ -200,7 +213,7 @@
                 </thead>
                 <tbody id="tableBodyExpedientes" class="divide-y divide-slate-200 bg-white">
                     <tr>
-                        <td colspan="15" class="p-8 text-center text-slate-400 italic">No hay datos en la base de datos local.</td>
+                        <td colspan="15" class="p-8 text-center text-slate-400 font-semibold italic">No hay registros en la base de datos local. Carga una matriz Excel/CSV.</td>
                     </tr>
                 </tbody>
             </table>
@@ -310,6 +323,12 @@
     <!-- SCRIPT DE CONTROL Y LÓGICA INTEGRA -->
     <script>
         let currentDataset = [];
+        let trendChartInstance = null;
+
+        // Normalizador de texto para búsquedas y meses flexibilizados
+        function cleanStr(str) {
+            return String(str || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        }
 
         function initData() {
             const saved = localStorage.getItem('pdc_trazabilidad_dataset');
@@ -327,21 +346,25 @@
         }
 
         function renderDashboard() {
-            const searchVal = document.getElementById('filterSearch').value.trim().toLowerCase();
-            const monthVal = document.getElementById('filterMonth').value;
-            const catVal = document.getElementById('filterCategoria').value;
-            const estadoVal = document.getElementById('filterEstado').value;
-            const refVal = document.getElementById('filterReferimiento').value;
+            const searchVal = cleanStr(document.getElementById('filterSearch').value);
+            const monthVal = cleanStr(document.getElementById('filterMonth').value);
+            const catVal = cleanStr(document.getElementById('filterCategoria').value);
+            const estadoVal = cleanStr(document.getElementById('filterEstado').value);
+            const refVal = cleanStr(document.getElementById('filterReferimiento').value);
 
             const filtered = currentDataset.filter(item => {
-                const matchesSearch = searchVal === "" || 
-                    String(item.expediente).toLowerCase().includes(searchVal) || 
-                    String(item.nombre || '').toLowerCase().includes(searchVal);
-                
-                const matchesMonth = monthVal === "" || item.month === monthVal;
-                const matchesCat = catVal === "" || (item.categoria || 'Prevalente') === catVal;
-                const matchesEstado = estadoVal === "" || item.estado === estadoVal;
-                const matchesRef = refVal === "" || String(item.referimiento || '').toLowerCase().includes(refVal.toLowerCase());
+                const itemExp = cleanStr(item.expediente);
+                const itemNom = cleanStr(item.nombre);
+                const itemMonth = cleanStr(item.month);
+                const itemCat = cleanStr(item.categoria || 'prevalente');
+                const itemEstado = cleanStr(item.estado);
+                const itemRef = cleanStr(item.referimiento);
+
+                const matchesSearch = searchVal === "" || itemExp.includes(searchVal) || itemNom.includes(searchVal);
+                const matchesMonth = monthVal === "" || itemMonth.includes(monthVal);
+                const matchesCat = catVal === "" || itemCat.includes(catVal);
+                const matchesEstado = estadoVal === "" || itemEstado.includes(estadoVal);
+                const matchesRef = refVal === "" || itemRef.includes(refVal);
 
                 return matchesSearch && matchesMonth && matchesCat && matchesEstado && matchesRef;
             });
@@ -379,6 +402,9 @@
                         </span>
                     </div>
                 `;
+
+                // Renderizar gráfico de tendencia
+                renderPatientChart(filteredData);
 
                 cardsContainer.innerHTML = "";
                 
@@ -425,12 +451,62 @@
             }
         }
 
+        // DIBUJAR GRÁFICO DINÁMICO DE TENDENCIA INDIVIDUAL (Chart.js)
+        function renderPatientChart(data) {
+            const ctx = document.getElementById('patientTrendChart').getContext('2d');
+            
+            if (trendChartInstance) {
+                trendChartInstance.destroy();
+            }
+
+            const months = data.map(d => d.month);
+            const estadosScores = data.map(d => (d.estado.includes('Estable') && !d.estado.includes('No')) ? 100 : 40);
+
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Índice de Estabilidad Clínica (%)',
+                        data: estadosScores,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 6,
+                        pointBackgroundColor: '#1d4ed8'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            min: 0,
+                            max: 120,
+                            ticks: {
+                                callback: function(val) {
+                                    if (val === 100) return 'Estable';
+                                    if (val === 40) return 'En Riesgo';
+                                    return '';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, position: 'top' }
+                    }
+                }
+            });
+        }
+
         function renderTable(data) {
             const tbody = document.getElementById('tableBodyExpedientes');
             tbody.innerHTML = "";
 
             if (data.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-slate-400 font-semibold italic">No hay registros en la base de datos. Carga una matriz Excel/CSV o agrega un nuevo expediente.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="15" class="p-8 text-center text-slate-400 font-semibold italic">No se encontraron registros de consultas con los criterios seleccionados.</td></tr>`;
                 return;
             }
 
@@ -534,7 +610,7 @@
                     renderDashboard();
                     alert(`¡Importación exitosa! Se han añadido ${newRecords.length} registros a la matriz.`);
                 } catch (err) {
-                    alert("Asegúrate de seleccionar un archivo Excel (.xlsx) or CSV válido.");
+                    alert("Asegúrate de seleccionar un archivo Excel (.xlsx) o CSV válido.");
                 }
             };
             reader.readAsArrayBuffer(file);
